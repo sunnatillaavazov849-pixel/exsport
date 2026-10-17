@@ -5,157 +5,163 @@
 '==============================================================================
 Option Explicit
 
-Private WithEvents optCMYK As MSForms.OptionButton
-Private WithEvents optRGB As MSForms.OptionButton
-Private WithEvents chkBright As MSForms.CheckBox
+' Ranglar
+Private Const CLR_BG As Long = &H302D2D      ' to'q kulrang fon   RGB(45,45,48)
+Private Const CLR_CTRL As Long = &H423E3E    ' maydonlar foni     RGB(62,62,66)
+Private Const CLR_BTN As Long = &H4B4646     ' tugmalar foni      RGB(70,70,75)
+Private Const CLR_TEXT As Long = &HFFFFFF    ' oq matn
+Private Const FONT_SIZE As Single = 10
+
+Private WithEvents cboColor As MSForms.ComboBox
 Private WithEvents cboBright As MSForms.ComboBox
-Private WithEvents optBanner As MSForms.OptionButton
-Private WithEvents optOrakal As MSForms.OptionButton
-Private WithEvents optBekprint As MSForms.OptionButton
-Private WithEvents optTIF As MSForms.OptionButton
-Private WithEvents optPNG As MSForms.OptionButton
-Private WithEvents optJPG As MSForms.OptionButton
-Private WithEvents optJPEG As MSForms.OptionButton
+Private WithEvents cboType As MSForms.ComboBox
+Private WithEvents cboFormat As MSForms.ComboBox
 Private WithEvents cboDpi As MSForms.ComboBox
-Private WithEvents optPage As MSForms.OptionButton
-Private WithEvents optSel As MSForms.OptionButton
 Private WithEvents btnFolder As MSForms.CommandButton
 Private WithEvents btnExport As MSForms.CommandButton
 Private WithEvents btnCancel As MSForms.CommandButton
 Private txtFolder As MSForms.TextBox
+Private lblInfo As MSForms.Label
 Private lblPreview As MSForms.Label
 Private lblNote As MSForms.Label
+Private sel As ShapeRange
 Private loading As Boolean
 
 '------------------------------------------------------------------------------
 '  Oyna yaratish
 '------------------------------------------------------------------------------
 Private Sub UserForm_Initialize()
-    Dim f As MSForms.Frame, lbl As MSForms.Label, i As Long
+    Const LX As Single = 14, CX As Single = 165, CW As Single = 200, ROW As Single = 30
+    Dim t As Single
     loading = True
+    Set sel = ActiveSelectionRange
 
     Me.Caption = "Pechatga eksport"
-    Me.Width = 350
-    Me.Height = 420
+    Me.BackColor = CLR_BG
+    Me.Width = 390
+    Me.Height = 385
 
-    Set f = AddFrame("1. Rang rejimi", 6, 6, 330, 38)
-    Set optCMYK = AddOpt(f, "CMYK", 10, 6, 80)
-    Set optRGB = AddOpt(f, "RGB", 100, 6, 80)
+    t = 14
+    AddLabel "Rang rejimi:", LX, t + 3, 145
+    Set cboColor = AddCombo(CX, t, CW, True)
+    cboColor.AddItem "CMYK": cboColor.AddItem "RGB"
 
-    Set f = AddFrame("2. Ranglarni ochroq qilish (CMYK da to'qlashmasligi uchun)", 6, 50, 330, 38)
-    Set chkBright = f.Controls.Add("Forms.CheckBox.1")
-    With chkBright: .Caption = "Ha, ochroq qilish": .Left = 10: .Top = 6: .Width = 120: .Height = 16: End With
-    Set lbl = AddLabel(f, "Qancha (%):", 150, 8, 60)
-    Set cboBright = f.Controls.Add("Forms.ComboBox.1")
-    With cboBright
-        .Left = 215: .Top = 5: .Width = 60: .Height = 18
-        For i = 5 To 50 Step 5: .AddItem CStr(i): Next i
-    End With
+    t = t + ROW
+    AddLabel "Ranglarni ochroq qilish:", LX, t + 3, 150
+    Set cboBright = AddCombo(CX, t, CW, True)
+    Dim i As Long
+    cboBright.AddItem "Yo'q"
+    For i = 5 To 50 Step 5: cboBright.AddItem i & "%": Next i
 
-    Set f = AddFrame("3. Pechat turi", 6, 94, 330, 38)
-    Set optBanner = AddOpt(f, "Banner", 10, 6, 80)
-    Set optOrakal = AddOpt(f, "Orakal", 100, 6, 80)
-    Set optBekprint = AddOpt(f, "Bekprint", 190, 6, 80)
+    t = t + ROW
+    AddLabel "Pechat turi:", LX, t + 3, 145
+    Set cboType = AddCombo(CX, t, CW, True)
+    cboType.AddItem "Banner": cboType.AddItem "Orakal": cboType.AddItem "Bekprint"
 
-    Set f = AddFrame("4. Format", 6, 138, 330, 38)
-    Set optTIF = AddOpt(f, "TIF", 10, 6, 60)
-    Set optPNG = AddOpt(f, "PNG", 80, 6, 60)
-    Set optJPG = AddOpt(f, "JPG", 150, 6, 60)
-    Set optJPEG = AddOpt(f, "JPEG", 220, 6, 60)
+    t = t + ROW
+    AddLabel "Format:", LX, t + 3, 145
+    Set cboFormat = AddCombo(CX, t, CW, True)
+    cboFormat.AddItem "TIF": cboFormat.AddItem "PNG": cboFormat.AddItem "JPG": cboFormat.AddItem "JPEG"
 
-    Set lbl = AddLabel(Me, "5. Razreshenie (dpi):", 12, 186, 110)
-    Set cboDpi = Me.Controls.Add("Forms.ComboBox.1")
-    With cboDpi
-        .Left = 125: .Top = 183: .Width = 70: .Height = 18
-        .AddItem "72": .AddItem "100": .AddItem "120": .AddItem "150"
-        .AddItem "200": .AddItem "300"
-    End With
+    t = t + ROW
+    AddLabel "Razreshenie (dpi):", LX, t + 3, 145
+    Set cboDpi = AddCombo(CX, t, CW, False)   ' o'zingiz ham yozsangiz bo'ladi
+    cboDpi.AddItem "72": cboDpi.AddItem "100": cboDpi.AddItem "120": cboDpi.AddItem "150"
+    cboDpi.AddItem "200": cboDpi.AddItem "300"
 
-    Set f = AddFrame("6. Nimani eksport qilish", 6, 208, 330, 38)
-    Set optPage = AddOpt(f, "Butun sahifa", 10, 6, 110)
-    Set optSel = AddOpt(f, "Faqat tanlangan obyekt", 130, 6, 160)
-
-    Set lbl = AddLabel(Me, "Papka:", 12, 256, 40)
+    t = t + ROW
+    AddLabel "Papka:", LX, t + 3, 145
     Set txtFolder = Me.Controls.Add("Forms.TextBox.1")
-    With txtFolder: .Left = 50: .Top = 253: .Width = 250: .Height = 18: End With
-    Set btnFolder = Me.Controls.Add("Forms.CommandButton.1")
-    With btnFolder: .Caption = "...": .Left = 304: .Top = 252: .Width = 30: .Height = 20: End With
+    With txtFolder
+        .Left = CX: .Top = t: .Width = CW - 32: .Height = 20
+        .BackColor = CLR_CTRL: .ForeColor = CLR_TEXT
+        .Font.Size = FONT_SIZE: .Font.Bold = True
+    End With
+    Set btnFolder = AddButton("...", CX + CW - 28, t, 28, 20)
 
-    Set lbl = AddLabel(Me, "Fayl nomi:", 12, 280, 60)
-    Set lblPreview = AddLabel(Me, "", 12, 294, 322)
-    With lblPreview: .Height = 18: .Font.Bold = True: .ForeColor = RGB(0, 90, 170): End With
-    Set lblNote = AddLabel(Me, "", 12, 314, 322)
-    With lblNote: .Height = 26: .ForeColor = RGB(170, 60, 0): .WordWrap = True: End With
+    t = t + ROW + 4
+    Set lblInfo = AddLabel("", LX, t, 350)
+    t = t + 20
+    Set lblPreview = AddLabel("", LX, t, 350)
+    With lblPreview: .Height = 50: .ForeColor = RGB(120, 195, 255): .WordWrap = True: End With
+    t = t + 52
+    Set lblNote = AddLabel("", LX, t, 350)
+    With lblNote: .Height = 30: .ForeColor = RGB(255, 175, 90): .WordWrap = True: End With
 
-    Set btnExport = Me.Controls.Add("Forms.CommandButton.1")
-    With btnExport: .Caption = "Eksport": .Left = 150: .Top = 346: .Width = 90: .Height = 26: .Default = True: End With
-    Set btnCancel = Me.Controls.Add("Forms.CommandButton.1")
-    With btnCancel: .Caption = "Bekor qilish": .Left = 246: .Top = 346: .Width = 90: .Height = 26: .Cancel = True: End With
+    t = t + 34
+    Set btnExport = AddButton("Eksport", 175, t, 92, 30)
+    btnExport.Default = True
+    Set btnCancel = AddButton("Bekor qilish", 273, t, 92, 30)
+    btnCancel.Cancel = True
 
     LoadSettings
     loading = False
     UpdateUI
 End Sub
 
-Private Function AddFrame(ByVal cap As String, ByVal l As Single, ByVal t As Single, _
-        ByVal w As Single, ByVal h As Single) As MSForms.Frame
-    Set AddFrame = Me.Controls.Add("Forms.Frame.1")
-    With AddFrame: .Caption = cap: .Left = l: .Top = t: .Width = w: .Height = h: End With
+Private Function AddLabel(ByVal cap As String, ByVal l As Single, ByVal t As Single, _
+        ByVal w As Single) As MSForms.Label
+    Set AddLabel = Me.Controls.Add("Forms.Label.1")
+    With AddLabel
+        .Caption = cap: .Left = l: .Top = t: .Width = w: .Height = 18
+        .BackStyle = fmBackStyleTransparent
+        .ForeColor = CLR_TEXT
+        .Font.Size = FONT_SIZE: .Font.Bold = True
+    End With
 End Function
 
-Private Function AddOpt(ByVal parent As Object, ByVal cap As String, ByVal l As Single, _
-        ByVal t As Single, ByVal w As Single) As MSForms.OptionButton
-    Set AddOpt = parent.Controls.Add("Forms.OptionButton.1")
-    With AddOpt: .Caption = cap: .Left = l: .Top = t: .Width = w: .Height = 16: End With
+Private Function AddCombo(ByVal l As Single, ByVal t As Single, ByVal w As Single, _
+        ByVal listOnly As Boolean) As MSForms.ComboBox
+    Set AddCombo = Me.Controls.Add("Forms.ComboBox.1")
+    With AddCombo
+        .Left = l: .Top = t: .Width = w: .Height = 20
+        If listOnly Then .Style = fmStyleDropDownList
+        .BackColor = CLR_CTRL: .ForeColor = CLR_TEXT
+        .Font.Size = FONT_SIZE: .Font.Bold = True
+    End With
 End Function
 
-Private Function AddLabel(ByVal parent As Object, ByVal cap As String, ByVal l As Single, _
-        ByVal t As Single, ByVal w As Single) As MSForms.Label
-    Set AddLabel = parent.Controls.Add("Forms.Label.1")
-    With AddLabel: .Caption = cap: .Left = l: .Top = t: .Width = w: .Height = 14: End With
+Private Function AddButton(ByVal cap As String, ByVal l As Single, ByVal t As Single, _
+        ByVal w As Single, ByVal h As Single) As MSForms.CommandButton
+    Set AddButton = Me.Controls.Add("Forms.CommandButton.1")
+    With AddButton
+        .Caption = cap: .Left = l: .Top = t: .Width = w: .Height = h
+        .BackColor = CLR_BTN: .ForeColor = CLR_TEXT
+        .Font.Size = FONT_SIZE: .Font.Bold = True
+    End With
 End Function
+
+' Ro'yxatdan matn bo'yicha tanlash (topilmasa defIndex)
+Private Sub SelectItem(ByVal cbo As MSForms.ComboBox, ByVal txt As String, ByVal defIndex As Long)
+    Dim i As Long
+    For i = 0 To cbo.ListCount - 1
+        If StrComp(cbo.List(i), txt, vbTextCompare) = 0 Then cbo.ListIndex = i: Exit Sub
+    Next i
+    cbo.ListIndex = defIndex
+End Sub
 
 '------------------------------------------------------------------------------
 '  Sozlamalarni eslab qolish
 '------------------------------------------------------------------------------
 Private Sub LoadSettings()
     Dim folder As String
-    optCMYK.Value = (GetSetting(APP_NAME, "Last", "Color", "cmyk") = "cmyk")
-    optRGB.Value = Not optCMYK.Value
-    chkBright.Value = (GetSetting(APP_NAME, "Last", "Bright", "1") = "1")
-    cboBright.Text = GetSetting(APP_NAME, "Last", "BrightPct", "15")
-
-    Select Case GetSetting(APP_NAME, "Last", "Type", "banner")
-        Case "orakal": optOrakal.Value = True
-        Case "bekprint": optBekprint.Value = True
-        Case Else: optBanner.Value = True
-    End Select
-
-    Select Case GetSetting(APP_NAME, "Last", "Format", "tif")
-        Case "png": optPNG.Value = True
-        Case "jpg": optJPG.Value = True
-        Case "jpeg": optJPEG.Value = True
-        Case Else: optTIF.Value = True
-    End Select
-
+    SelectItem cboColor, GetSetting(APP_NAME, "Last", "Color", "CMYK"), 0
+    SelectItem cboBright, GetSetting(APP_NAME, "Last", "Bright", "15%"), 3
+    SelectItem cboType, GetSetting(APP_NAME, "Last", "Type", "Banner"), 0
+    SelectItem cboFormat, GetSetting(APP_NAME, "Last", "Format", "TIF"), 0
     cboDpi.Text = GetSetting(APP_NAME, "Last", "Dpi", "150")
 
-    optPage.Value = True
-    If ActiveSelectionRange.Count = 0 Then optSel.Enabled = False
-
-    folder = ""
-    If Len(ActiveDocument.FilePath) > 0 Then folder = ActiveDocument.FilePath
+    folder = ActiveDocument.FilePath
     If Len(folder) = 0 Then folder = GetSetting(APP_NAME, "Last", "Folder", "")
     If Len(folder) = 0 Then folder = CreateObject("WScript.Shell").SpecialFolders("Desktop")
     txtFolder.Text = folder
 End Sub
 
 Private Sub SaveSettings()
-    SaveSetting APP_NAME, "Last", "Color", IIf(optCMYK.Value, "cmyk", "rgb")
-    SaveSetting APP_NAME, "Last", "Bright", IIf(chkBright.Value, "1", "0")
-    SaveSetting APP_NAME, "Last", "BrightPct", cboBright.Text
-    SaveSetting APP_NAME, "Last", "Type", SelectedType()
-    SaveSetting APP_NAME, "Last", "Format", SelectedExt()
+    SaveSetting APP_NAME, "Last", "Color", cboColor.Text
+    SaveSetting APP_NAME, "Last", "Bright", cboBright.Text
+    SaveSetting APP_NAME, "Last", "Type", cboType.Text
+    SaveSetting APP_NAME, "Last", "Format", cboFormat.Text
     SaveSetting APP_NAME, "Last", "Dpi", cboDpi.Text
     SaveSetting APP_NAME, "Last", "Folder", txtFolder.Text
 End Sub
@@ -163,71 +169,59 @@ End Sub
 '------------------------------------------------------------------------------
 '  Tanlovlar
 '------------------------------------------------------------------------------
-Private Function SelectedType() As String
-    If optOrakal.Value Then
-        SelectedType = "orakal"
-    ElseIf optBekprint.Value Then
-        SelectedType = "bekprint"
-    Else
-        SelectedType = "banner"
-    End If
+Private Function IsCMYK() As Boolean
+    IsCMYK = (cboColor.Text = "CMYK")
 End Function
 
-Private Function SelectedExt() As String
-    If optPNG.Value Then
-        SelectedExt = "png"
-    ElseIf optJPG.Value Then
-        SelectedExt = "jpg"
-    ElseIf optJPEG.Value Then
-        SelectedExt = "jpeg"
-    Else
-        SelectedExt = "tif"
-    End If
+Private Function BrightPct() As Long
+    BrightPct = CLng(Val(cboBright.Text))   ' "Yo'q" -> 0, "15%" -> 15
+End Function
+
+Private Function NameFor(ByVal sr As ShapeRange) As String
+    Dim x As Double, y As Double, w As Double, h As Double
+    GetBoundsCm sr, x, y, w, h
+    NameFor = BuildFileName(w, h, cboType.Text, IsCMYK(), cboFormat.Text)
 End Function
 
 Private Sub UpdateUI()
-    Dim x As Double, y As Double, w As Double, h As Double
+    Dim i As Long, txt As String, one As ShapeRange
     If loading Then Exit Sub
 
     ' PNG faqat RGB bo'ladi
-    If optPNG.Value Then
-        optRGB.Value = True
-        optCMYK.Enabled = False
+    If cboFormat.Text = "PNG" Then
+        If cboColor.Text <> "RGB" Then cboColor.ListIndex = 1
+        cboColor.Enabled = False
         lblNote.Caption = "PNG formati CMYK ni qo'llamaydi - RGB bo'lib saqlanadi."
     Else
-        optCMYK.Enabled = True
+        cboColor.Enabled = True
         lblNote.Caption = ""
     End If
 
-    cboBright.Enabled = chkBright.Value
-
-    If GetExportBounds(optSel.Value, x, y, w, h) Then
-        lblPreview.Caption = BuildFileName(w, h, SelectedType(), optCMYK.Value, SelectedExt())
-        If IsNumeric(cboDpi.Text) Then
-            If Val(cboDpi.Text) > 0 Then
-                lblNote.Caption = Trim$(lblNote.Caption & "  Piksel: " & _
-                    CLng(w / 2.54 * Val(cboDpi.Text)) & " x " & CLng(h / 2.54 * Val(cboDpi.Text)))
-            End If
-        End If
+    If sel.Count = 0 Then
+        lblInfo.Caption = "Hech narsa tanlanmagan - butun sahifa saqlanadi:"
+        txt = NameFor(Nothing)
     Else
-        lblPreview.Caption = "(obyekt tanlanmagan)"
+        If sel.Count = 1 Then
+            lblInfo.Caption = "Tanlangan obyekt saqlanadi:"
+        Else
+            lblInfo.Caption = sel.Count & " ta obyekt - har biri alohida saqlanadi:"
+        End If
+        For i = 1 To sel.Count
+            If i > 3 Then
+                txt = txt & "... va yana " & (sel.Count - 3) & " ta"
+                Exit For
+            End If
+            Set one = CreateShapeRange
+            one.Add sel(i)
+            txt = txt & NameFor(one) & vbCrLf
+        Next i
     End If
+    lblPreview.Caption = txt
 End Sub
 
-Private Sub optCMYK_Click(): UpdateUI: End Sub
-Private Sub optRGB_Click(): UpdateUI: End Sub
-Private Sub chkBright_Click(): UpdateUI: End Sub
-Private Sub cboBright_Change(): UpdateUI: End Sub
-Private Sub optBanner_Click(): UpdateUI: End Sub
-Private Sub optOrakal_Click(): UpdateUI: End Sub
-Private Sub optBekprint_Click(): UpdateUI: End Sub
-Private Sub optTIF_Click(): UpdateUI: End Sub
-Private Sub optPNG_Click(): UpdateUI: End Sub
-Private Sub optJPG_Click(): UpdateUI: End Sub
-Private Sub optJPEG_Click(): UpdateUI: End Sub
-Private Sub cboDpi_Change(): UpdateUI: End Sub
-Private Sub optPage_Click(): UpdateUI: End Sub
-Private Sub optSel_Click(): UpdateUI: End Sub
+Private Sub cboColor_Change(): UpdateUI: End Sub
+Private Sub cboType_Change(): UpdateUI: End Sub
+Private Sub cboFormat_Change(): UpdateUI: End Sub
 
 '------------------------------------------------------------------------------
 '  Tugmalar
@@ -243,7 +237,7 @@ Private Sub btnCancel_Click()
 End Sub
 
 Private Sub btnExport_Click()
-    Dim dpi As Long, pct As Long, result As String
+    Dim dpi As Long, result As String, n As Long, line As Variant
 
     If Not IsNumeric(cboDpi.Text) Then
         MsgBox "Razreshenie (dpi) raqam bo'lishi kerak.", vbExclamation, "Pechat eksport"
@@ -255,19 +249,6 @@ Private Sub btnExport_Click()
         Exit Sub
     End If
 
-    pct = 0
-    If chkBright.Value Then
-        If Not IsNumeric(cboBright.Text) Then
-            MsgBox "Ochroq qilish foizi raqam bo'lishi kerak.", vbExclamation, "Pechat eksport"
-            Exit Sub
-        End If
-        pct = CLng(Val(cboBright.Text))
-        If pct < 1 Or pct > 100 Then
-            MsgBox "Ochroq qilish foizi 1 dan 100 gacha bo'lishi kerak.", vbExclamation, "Pechat eksport"
-            Exit Sub
-        End If
-    End If
-
     If Len(txtFolder.Text) = 0 Or Len(Dir$(txtFolder.Text, vbDirectory)) = 0 Then
         MsgBox "Papka topilmadi: " & txtFolder.Text, vbExclamation, "Pechat eksport"
         Exit Sub
@@ -275,12 +256,19 @@ Private Sub btnExport_Click()
 
     SaveSettings
     btnExport.Enabled = False
-    result = ExportPechat(optCMYK.Value, chkBright.Value, pct, SelectedType(), SelectedExt(), _
-                          dpi, txtFolder.Text, optSel.Value)
+    lblNote.Caption = "Eksport qilinmoqda, kuting..."
+    Me.Repaint
+
+    result = ExportPechat(IsCMYK(), BrightPct(), cboType.Text, cboFormat.Text, dpi, txtFolder.Text)
     If Len(result) > 0 Then
-        MsgBox "Tayyor! Fayl saqlandi:" & vbCrLf & result, vbInformation, "Pechat eksport"
+        For Each line In Split(result, vbCrLf)
+            If Len(line) > 0 Then n = n + 1
+        Next line
+        MsgBox "Tayyor! " & n & " ta fayl saqlandi:" & vbCrLf & vbCrLf & result, _
+               vbInformation, "Pechat eksport"
         Unload Me
     Else
         btnExport.Enabled = True
+        UpdateUI
     End If
 End Sub

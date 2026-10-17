@@ -1,13 +1,19 @@
 # Pechat Eksport — CorelDRAW uchun plagin (makros)
 
-Rasmni pechatga (banner, orakal, bekprint) bitta oynadan eksport qiladi:
+Rasmni pechatga (banner, orakal, bekprint) bitta oynadan eksport qiladi.
+Hamma tanlovlar ochiladigan ro'yxatda:
 
 1. **Rang rejimi** — CMYK yoki RGB
-2. **Ranglarni ochroq qilish** — RGB rasm CMYK ga o'tganda rangi to'qlashib ketmasligi uchun (foizini tanlaysiz, odatda 10–20%)
+2. **Ranglarni ochroq qilish** — Yo'q yoki 5–50% (RGB rasm CMYK ga o'tganda rangi to'qlashib ketmasligi uchun, odatda 10–20%)
 3. **Pechat turi** — Banner / Orakal / Bekprint
 4. **Format** — TIF, PNG, JPG, JPEG
-5. **Razreshenie (dpi)** — masalan 150
-6. **Nimani eksport qilish** — butun sahifa yoki faqat tanlangan obyekt
+5. **Razreshenie (dpi)** — masalan 150 (o'zingiz ham yozsangiz bo'ladi)
+
+**Nima eksport qilinadi:**
+
+- Hech narsa tanlanmagan bo'lsa — butun sahifa.
+- Bitta obyekt tanlangan bo'lsa — shu obyekt.
+- **Bir nechta obyekt tanlangan bo'lsa — har biri alohida fayl bo'lib, o'z o'lchami bilan saqlanadi.**
 
 Fayl nomi o'lcham, tur va rangdan avtomatik tuziladi:
 
@@ -15,8 +21,8 @@ Fayl nomi o'lcham, tur va rangdan avtomatik tuziladi:
 150 x 200 cm_banner_cmyk.tif
 ```
 
-O'lcham sahifa (yoki tanlangan obyekt) o'lchamidan santimetrda olinadi.
-Oynaning pastida fayl nomi va piksel o'lchami oldindan ko'rsatib turiladi.
+O'lcham sahifa (yoki har bir obyekt) o'lchamidan santimetrda olinadi.
+Oynaning pastida fayl nomlari oldindan ko'rsatib turiladi.
 Oxirgi tanlovlaringiz eslab qolinadi.
 
 ## O'rnatish (bir marta)
@@ -41,7 +47,7 @@ Yoki: **Tools → Macros → Run Macro** → `PechatgaEksport`.
 
 ## Ishlatish
 
-1. Dizaynni sahifada 150 x 200 sm qilib tayyorlang (yoki obyektni tanlang).
+1. Dizaynni sahifada 150 x 200 sm qilib tayyorlang, yoki saqlanadigan rasmlarni tanlang (bir nechtasini ham).
 2. `PechatgaEksport` tugmasini bosing.
 3. Rang, ochroqlik, tur, format va dpi ni tanlang → **Eksport**.
 4. Fayl tanlangan papkaga `150 x 200 cm_banner_cmyk.tif` kabi nom bilan saqlanadi.
@@ -53,4 +59,5 @@ Yoki: **Tools → Macros → Run Macro** → `PechatgaEksport`.
 - **PNG** formati CMYK ni qo'llamaydi — PNG tanlansa avtomatik RGB bo'ladi.
 - Katta bannerlar (masalan 150 x 200 sm, 150 dpi, CMYK TIF) bir necha yuz MB bo'lishi mumkin,
   eksport biroz vaqt oladi.
-- Fayl allaqachon bo'lsa, ustidan yozish so'raladi.
+- Shu nomli fayl bo'lsa (masalan, ikkita rasm bir xil o'lchamda), ustidan yozilmaydi —
+  nomiga `(2)`, `(3)` qo'shiladi: `150 x 200 cm_banner_cmyk (2).tif`.
