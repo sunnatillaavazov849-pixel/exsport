@@ -1,137 +1,335 @@
 '==============================================================================
 '  frmExport - Pechat eksport oynasi
 '  Bu kodni bo'sh UserForm (nomi: frmExport) ichiga to'liq qo'ying.
-'  Barcha tugma va tanlovlar kod orqali avtomatik yaratiladi.
+'  Barcha elementlar kod orqali avtomatik yaratiladi.
 '==============================================================================
 Option Explicit
 
-' Ranglar
-Private Const CLR_BG As Long = &H302D2D      ' to'q kulrang fon   RGB(45,45,48)
-Private Const CLR_CTRL As Long = &H423E3E    ' maydonlar foni     RGB(62,62,66)
-Private Const CLR_BTN As Long = &H4B4646     ' tugmalar foni      RGB(70,70,75)
-Private Const CLR_TEXT As Long = &HFFFFFF    ' oq matn
-Private Const FONT_SIZE As Single = 10
+' --- Ranglar ---
+Private Const CLR_BG As Long = &HF2F2F2        ' asosiy fon      RGB(242,242,242)
+Private Const CLR_CARD As Long = &HFFFFFF      ' blok            oq
+Private Const CLR_FIELD As Long = &HF5F3F3     ' maydon          RGB(243,243,245)
+Private Const CLR_TEXT As Long = &H1E1C1C      ' asosiy matn     RGB(28,28,30)
+Private Const CLR_MUTED As Long = &H938E8E     ' ikkinchi matn   RGB(142,142,147)
+Private Const CLR_PRIMARY As Long = &H1E1C1C   ' asosiy tugma
+Private Const CLR_ERROR As Long = &H493AD7     ' xato            RGB(215,58,73)
+Private Const CLR_OK As Long = &H6CA430        ' muvaffaqiyat    RGB(48,164,108)
+Private Const CLR_WARN As Long = &H1A8CE0      ' ogohlantirish   RGB(224,140,26)
+
+' --- Shrift ---
+Private Const FONT_NAME As String = "Segoe UI"
+Private Const FS_TITLE As Single = 11
+Private Const FS_TEXT As Single = 10
+Private Const FS_SMALL As Single = 9
+Private Const FS_VALUE As Single = 11
+Private Const FS_STEP As Single = 15
+
+' --- O'lchamlar (pt) ---
+Private Const FORM_W As Single = 340
+Private Const MARGIN As Single = 12      ' oyna chekkasi va bloklar orasi
+Private Const PAD As Single = 14         ' blok ichki chekkasi
+Private Const CARD_HEAD As Single = 40   ' blok sarlavhasi balandligi
+Private Const H_CTRL As Single = 28      ' maydon va tugma balandligi
+Private Const ROW_GAP As Single = 8
+Private Const LBL_W As Single = 100
+Private Const R_CARD As Single = 12      ' blok yumaloqligi
+Private Const R_CTRL As Single = 7       ' maydon/tugma yumaloqligi
+Private Const STEP_W As Single = 30      ' "-" / "+" kengligi
+
+Private Const DPI_PRESETS As String = "72,100,120,150,200,300"
 
 Private WithEvents cboColor As MSForms.ComboBox
-Private WithEvents cboBright As MSForms.ComboBox
 Private WithEvents cboType As MSForms.ComboBox
 Private WithEvents cboFormat As MSForms.ComboBox
-Private WithEvents cboDpi As MSForms.ComboBox
-Private WithEvents btnFolder As MSForms.CommandButton
-Private WithEvents btnExport As MSForms.CommandButton
-Private WithEvents btnCancel As MSForms.CommandButton
+Private WithEvents lblBrMinus As MSForms.Label
+Private WithEvents lblBrPlus As MSForms.Label
+Private WithEvents lblDpiMinus As MSForms.Label
+Private WithEvents lblDpiPlus As MSForms.Label
+Private WithEvents lblFolderBox As MSForms.Label
+Private WithEvents lblFolderTxt As MSForms.Label
+Private WithEvents lblExportBox As MSForms.Label
+Private WithEvents lblExportTxt As MSForms.Label
+Private WithEvents lblCloseBox As MSForms.Label
+Private WithEvents lblCloseTxt As MSForms.Label
+Private txtDpi As MSForms.TextBox
 Private txtFolder As MSForms.TextBox
-Private lblInfo As MSForms.Label
+Private lblBrVal As MSForms.Label
+Private lblBrUnit As MSForms.Label
+Private lblCount As MSForms.Label
 Private lblPreview As MSForms.Label
-Private lblNote As MSForms.Label
+Private lblMsg As MSForms.Label
+
+Private lastBox As MSForms.Label
 Private sel As ShapeRange
+Private brightVal As Long
 Private loading As Boolean
+Private busy As Boolean
 
 '------------------------------------------------------------------------------
 '  Oyna yaratish
 '------------------------------------------------------------------------------
 Private Sub UserForm_Initialize()
-    Const LX As Single = 14, CX As Single = 165, CW As Single = 200, ROW As Single = 30
-    Dim t As Single
+    Dim cardW As Single, fx As Single, fw As Single, t As Single, yTop As Single
     loading = True
     Set sel = ActiveSelectionRange
 
     Me.Caption = "Pechatga eksport"
     Me.BackColor = CLR_BG
-    Me.Width = 390
-    Me.Height = 385
+    Me.Font.Name = FONT_NAME
 
-    t = 14
-    AddLabel "Rang rejimi:", LX, t + 3, 145
-    Set cboColor = AddCombo(CX, t, CW, True)
+    cardW = FORM_W - 2 * MARGIN
+    fx = MARGIN + PAD + LBL_W
+    fw = cardW - 2 * PAD - LBL_W
+
+    ' --- Rang ---
+    yTop = MARGIN
+    t = Card("Rang", yTop, 2, 0)
+    RowLabel "Rejim", t
+    Set cboColor = NewCombo(fx, t, fw)
     cboColor.AddItem "CMYK": cboColor.AddItem "RGB"
 
-    t = t + ROW
-    AddLabel "Ranglarni ochroq qilish:", LX, t + 3, 150
-    Set cboBright = AddCombo(CX, t, CW, True)
-    Dim i As Long
-    cboBright.AddItem "Yo'q"
-    For i = 5 To 50 Step 5: cboBright.AddItem i & "%": Next i
+    t = t + H_CTRL + ROW_GAP
+    RowLabel("Ochroqlik", t).ControlTipText = Uz("CMYK da ranglar to'qlashmasligi uchun")
+    RoundBox fx, t, fw, H_CTRL, CLR_FIELD, CLR_CARD, R_CTRL
+    Set lblBrMinus = StepButton(ChrW(&H2212), fx, t)
+    Set lblBrVal = NewLabel("", fx + STEP_W, TextTop(t, FS_VALUE), fw - 2 * STEP_W, FS_VALUE * 1.6, FS_VALUE, True, CLR_TEXT)
+    lblBrVal.TextAlign = fmTextAlignCenter
+    Set lblBrUnit = NewLabel("%", fx + fw - STEP_W - 24, TextTop(t, FS_TEXT), 22, FS_TEXT * 1.6, FS_TEXT, False, CLR_MUTED)
+    lblBrUnit.TextAlign = fmTextAlignRight
+    Set lblBrPlus = StepButton("+", fx + fw - STEP_W, t)
+    yTop = yTop + CardHeight(2, 0) + MARGIN
 
-    t = t + ROW
-    AddLabel "Pechat turi:", LX, t + 3, 145
-    Set cboType = AddCombo(CX, t, CW, True)
+    ' --- Pechat ---
+    t = Card("Pechat", yTop, 3, 0)
+    RowLabel "Turi", t
+    Set cboType = NewCombo(fx, t, fw)
     cboType.AddItem "Banner": cboType.AddItem "Orakal": cboType.AddItem "Bekprint"
 
-    t = t + ROW
-    AddLabel "Format:", LX, t + 3, 145
-    Set cboFormat = AddCombo(CX, t, CW, True)
+    t = t + H_CTRL + ROW_GAP
+    RowLabel "Format", t
+    Set cboFormat = NewCombo(fx, t, fw)
     cboFormat.AddItem "TIF": cboFormat.AddItem "PNG": cboFormat.AddItem "JPG": cboFormat.AddItem "JPEG"
 
-    t = t + ROW
-    AddLabel "Razreshenie (dpi):", LX, t + 3, 145
-    Set cboDpi = AddCombo(CX, t, CW, False)   ' o'zingiz ham yozsangiz bo'ladi
-    cboDpi.AddItem "72": cboDpi.AddItem "100": cboDpi.AddItem "120": cboDpi.AddItem "150"
-    cboDpi.AddItem "200": cboDpi.AddItem "300"
+    t = t + H_CTRL + ROW_GAP
+    RowLabel "Razreshenie", t
+    RoundBox fx, t, fw, H_CTRL, CLR_FIELD, CLR_CARD, R_CTRL
+    Set lblDpiMinus = StepButton(ChrW(&H2212), fx, t)
+    Set txtDpi = Me.Controls.Add("Forms.TextBox.1")
+    With txtDpi
+        .Left = fx + STEP_W + 30: .Top = t + 4: .Width = fw - 2 * STEP_W - 60: .Height = H_CTRL - 8
+        .BorderStyle = fmBorderStyleNone: .SpecialEffect = fmSpecialEffectFlat
+        .BackColor = CLR_FIELD: .ForeColor = CLR_TEXT
+        .TextAlign = fmTextAlignCenter
+        .Font.Name = FONT_NAME: .Font.Size = FS_VALUE: .Font.Bold = True
+    End With
+    With NewLabel("dpi", fx + fw - STEP_W - 30, TextTop(t, FS_TEXT), 28, FS_TEXT * 1.6, FS_TEXT, False, CLR_MUTED)
+        .TextAlign = fmTextAlignRight
+    End With
+    Set lblDpiPlus = StepButton("+", fx + fw - STEP_W, t)
+    yTop = yTop + CardHeight(3, 0) + MARGIN
 
-    t = t + ROW
-    AddLabel "Papka:", LX, t + 3, 145
+    ' --- Fayl ---
+    t = Card("Fayl", yTop, 1, 60)
+    Set lblCount = NewLabel("", MARGIN + cardW - PAD - 160, yTop + 15, 160, FS_SMALL * 1.6, FS_SMALL, False, CLR_MUTED)
+    lblCount.TextAlign = fmTextAlignRight
+
+    RowLabel "Papka", t
+    RoundBox fx, t, fw, H_CTRL, CLR_FIELD, CLR_CARD, R_CTRL
     Set txtFolder = Me.Controls.Add("Forms.TextBox.1")
     With txtFolder
-        .Left = CX: .Top = t: .Width = CW - 32: .Height = 20
-        .BackColor = CLR_CTRL: .ForeColor = CLR_TEXT
-        .Font.Size = FONT_SIZE: .Font.Bold = True
+        .Left = fx + 8: .Top = t + 5: .Width = fw - 44: .Height = H_CTRL - 10
+        .BorderStyle = fmBorderStyleNone: .SpecialEffect = fmSpecialEffectFlat
+        .BackColor = CLR_FIELD: .ForeColor = CLR_TEXT
+        .Font.Name = FONT_NAME: .Font.Size = FS_TEXT
     End With
-    Set btnFolder = AddButton("...", CX + CW - 28, t, 28, 20)
+    Set lblFolderTxt = NewButton(ChrW(&H2026), fx + fw - 31, t + 3, 28, H_CTRL - 6, CLR_CARD, CLR_TEXT, CLR_FIELD, False)
+    Set lblFolderBox = lastBox
 
-    t = t + ROW + 4
-    Set lblInfo = AddLabel("", LX, t, 350)
-    t = t + 20
-    Set lblPreview = AddLabel("", LX, t, 350)
-    With lblPreview: .Height = 50: .ForeColor = RGB(120, 195, 255): .WordWrap = True: End With
-    t = t + 52
-    Set lblNote = AddLabel("", LX, t, 350)
-    With lblNote: .Height = 30: .ForeColor = RGB(255, 175, 90): .WordWrap = True: End With
+    Set lblPreview = NewLabel("", MARGIN + PAD, t + H_CTRL + 10, cardW - 2 * PAD, 52, FS_SMALL, False, CLR_MUTED)
+    lblPreview.WordWrap = True
+    yTop = yTop + CardHeight(1, 60) + 6
 
-    t = t + 34
-    Set btnExport = AddButton("Eksport", 175, t, 92, 30)
-    btnExport.Default = True
-    Set btnCancel = AddButton("Bekor qilish", 273, t, 92, 30)
-    btnCancel.Cancel = True
+    ' --- Holat va tugmalar ---
+    Set lblMsg = NewLabel("", MARGIN + 2, yTop, cardW - 4, FS_SMALL * 1.6, FS_SMALL, False, CLR_MUTED)
+    yTop = yTop + FS_SMALL * 1.6 + 6
+
+    Set lblExportTxt = NewButton("Eksport", FORM_W - MARGIN - 120, yTop, 120, H_CTRL, CLR_PRIMARY, CLR_CARD, CLR_BG, True)
+    Set lblExportBox = lastBox
+    Set lblCloseTxt = NewButton("Yopish", FORM_W - MARGIN - 120 - 8 - 96, yTop, 96, H_CTRL, CLR_CARD, CLR_TEXT, CLR_BG, True)
+    Set lblCloseBox = lastBox
+
+    SetInsideSize FORM_W, yTop + H_CTRL + MARGIN
 
     LoadSettings
     loading = False
     UpdateUI
 End Sub
 
-Private Function AddLabel(ByVal cap As String, ByVal l As Single, ByVal t As Single, _
-        ByVal w As Single) As MSForms.Label
-    Set AddLabel = Me.Controls.Add("Forms.Label.1")
-    With AddLabel
-        .Caption = cap: .Left = l: .Top = t: .Width = w: .Height = 18
+'------------------------------------------------------------------------------
+'  Dizayn elementlari
+'------------------------------------------------------------------------------
+Private Sub SetInsideSize(ByVal w As Single, ByVal h As Single)
+    Me.Width = Me.Width + (w - Me.InsideWidth)
+    Me.Height = Me.Height + (h - Me.InsideHeight)
+End Sub
+
+' O'zbekcha apostroflar: o' g' -> o‘ g‘, qolgani -> ’
+Private Function Uz(ByVal s As String) As String
+    s = Replace(s, "o'", "o" & ChrW(&H2018))
+    s = Replace(s, "O'", "O" & ChrW(&H2018))
+    s = Replace(s, "g'", "g" & ChrW(&H2018))
+    s = Replace(s, "G'", "G" & ChrW(&H2018))
+    Uz = Replace(s, "'", ChrW(&H2019))
+End Function
+
+Private Function TextTop(ByVal rowTop As Single, ByVal size As Single) As Single
+    TextTop = rowTop + (H_CTRL - size * 1.4) / 2 - 1
+End Function
+
+Private Function CardHeight(ByVal rows As Long, ByVal extra As Single) As Single
+    CardHeight = CARD_HEAD + rows * (H_CTRL + ROW_GAP) - ROW_GAP + PAD + extra
+End Function
+
+' Oq blok va sarlavha. Birinchi qator yuqorisini qaytaradi.
+Private Function Card(ByVal title As String, ByVal yTop As Single, ByVal rows As Long, _
+        ByVal extra As Single) As Single
+    RoundBox MARGIN, yTop, FORM_W - 2 * MARGIN, CardHeight(rows, extra), CLR_CARD, CLR_BG, R_CARD
+    NewLabel title, MARGIN + PAD, yTop + 13, 150, FS_TITLE * 1.6, FS_TITLE, True, CLR_TEXT
+    Card = yTop + CARD_HEAD
+End Function
+
+Private Function RowLabel(ByVal cap As String, ByVal rowTop As Single) As MSForms.Label
+    Set RowLabel = NewLabel(cap, MARGIN + PAD, TextTop(rowTop, FS_TEXT), LBL_W - 6, FS_TEXT * 1.6, _
+                            FS_TEXT, False, CLR_TEXT)
+End Function
+
+Private Function NewLabel(ByVal cap As String, ByVal l As Single, ByVal t As Single, ByVal w As Single, _
+        ByVal h As Single, ByVal size As Single, ByVal bold As Boolean, ByVal color As Long) As MSForms.Label
+    Set NewLabel = Me.Controls.Add("Forms.Label.1")
+    With NewLabel
+        .Caption = Uz(cap): .Left = l: .Top = t: .Width = w: .Height = h
         .BackStyle = fmBackStyleTransparent
-        .ForeColor = CLR_TEXT
-        .Font.Size = FONT_SIZE: .Font.Bold = True
+        .ForeColor = color
+        .WordWrap = False
+        .Font.Name = FONT_NAME: .Font.Size = size: .Font.Bold = bold
     End With
 End Function
 
-Private Function AddCombo(ByVal l As Single, ByVal t As Single, ByVal w As Single, _
-        ByVal listOnly As Boolean) As MSForms.ComboBox
-    Set AddCombo = Me.Controls.Add("Forms.ComboBox.1")
-    With AddCombo
-        .Left = l: .Top = t: .Width = w: .Height = 20
-        If listOnly Then .Style = fmStyleDropDownList
-        .BackColor = CLR_CTRL: .ForeColor = CLR_TEXT
-        .Font.Size = FONT_SIZE: .Font.Bold = True
+Private Function NewCombo(ByVal l As Single, ByVal t As Single, ByVal w As Single) As MSForms.ComboBox
+    RoundBox l, t, w, H_CTRL, CLR_FIELD, CLR_CARD, R_CTRL
+    Set NewCombo = Me.Controls.Add("Forms.ComboBox.1")
+    With NewCombo
+        .Left = l + 6: .Top = t + 4: .Width = w - 10: .Height = H_CTRL - 8
+        .Style = fmStyleDropDownList
+        .BorderStyle = fmBorderStyleNone
+        .SpecialEffect = fmSpecialEffectFlat
+        .BackColor = CLR_FIELD: .ForeColor = CLR_TEXT
+        .Font.Name = FONT_NAME: .Font.Size = FS_TEXT
     End With
 End Function
 
-Private Function AddButton(ByVal cap As String, ByVal l As Single, ByVal t As Single, _
-        ByVal w As Single, ByVal h As Single) As MSForms.CommandButton
-    Set AddButton = Me.Controls.Add("Forms.CommandButton.1")
-    With AddButton
-        .Caption = cap: .Left = l: .Top = t: .Width = w: .Height = h
-        .BackColor = CLR_BTN: .ForeColor = CLR_TEXT
-        .Font.Size = FONT_SIZE: .Font.Bold = True
-    End With
+Private Function StepButton(ByVal cap As String, ByVal l As Single, ByVal rowTop As Single) As MSForms.Label
+    Set StepButton = NewLabel(cap, l, TextTop(rowTop, FS_STEP), STEP_W, FS_STEP * 1.6, FS_STEP, False, CLR_MUTED)
+    StepButton.TextAlign = fmTextAlignCenter
 End Function
 
-' Ro'yxatdan matn bo'yicha tanlash (topilmasa defIndex)
+' Yumaloq tugma: lastBox = fon, qaytadi = matn (ikkalasi ham bosiladi)
+Private Function NewButton(ByVal cap As String, ByVal l As Single, ByVal t As Single, ByVal w As Single, _
+        ByVal h As Single, ByVal fill As Long, ByVal textColor As Long, ByVal bg As Long, _
+        ByVal bold As Boolean) As MSForms.Label
+    Set lastBox = RoundBox(l, t, w, h, fill, bg, R_CTRL)
+    Set NewButton = NewLabel(cap, l, t + (h - FS_TEXT * 1.4) / 2 - 1, w, FS_TEXT * 1.6, FS_TEXT, bold, textColor)
+    NewButton.TextAlign = fmTextAlignCenter
+End Function
+
+' Yumaloq burchakli to'rtburchak: rangli Label + 4 ta burchak rasmi
+Private Function RoundBox(ByVal l As Single, ByVal t As Single, ByVal w As Single, ByVal h As Single, _
+        ByVal fill As Long, ByVal bg As Long, ByVal r As Single) As MSForms.Label
+    Dim pos As Long, img As MSForms.Image
+    Set RoundBox = Me.Controls.Add("Forms.Label.1")
+    With RoundBox
+        .Caption = "": .Left = l: .Top = t: .Width = w: .Height = h
+        .BackStyle = fmBackStyleOpaque: .BackColor = fill
+        .BorderStyle = fmBorderStyleNone
+    End With
+    For pos = 0 To 3
+        Set img = Me.Controls.Add("Forms.Image.1")
+        With img
+            .BorderStyle = fmBorderStyleNone
+            .BackColor = bg
+            .PictureSizeMode = fmPictureSizeModeStretch
+            .Picture = LoadPicture(CornerFile(r, fill, bg, pos))
+            .Width = r: .Height = r
+            .Left = IIf(pos = 0 Or pos = 2, l, l + w - r)
+            .Top = IIf(pos < 2, t, t + h - r)
+        End With
+    Next pos
+End Function
+
+' Burchak rasmi (BMP) - TEMP papkada bir marta yaratiladi
+' pos: 0 = chap-yuqori, 1 = o'ng-yuqori, 2 = chap-past, 3 = o'ng-past
+Private Function CornerFile(ByVal rPt As Single, ByVal inner As Long, ByVal outer As Long, _
+        ByVal pos As Long) As String
+    Dim n As Long, f As String, fh As Integer, rowLen As Long, dataLen As Long
+    Dim b() As Byte, x As Long, y As Long, sx As Long, sy As Long, cnt As Long, i As Long
+    Dim cx As Double, cy As Double, dx As Double, dy As Double, a As Double
+
+    n = CLng(rPt * 4 / 3)
+    If n < 2 Then n = 2
+    f = Environ$("TEMP") & "\pechat_c" & n & "_" & Hex$(inner) & "_" & Hex$(outer) & "_" & pos & ".bmp"
+    CornerFile = f
+    If Len(Dir$(f)) > 0 Then Exit Function
+
+    rowLen = (n * 3 + 3) And Not 3
+    dataLen = rowLen * n
+    ReDim b(0 To 53 + dataLen)
+    b(0) = 66: b(1) = 77                 ' "BM"
+    PutLong b, 2, 54 + dataLen
+    PutLong b, 10, 54
+    PutLong b, 14, 40
+    PutLong b, 18, n
+    PutLong b, 22, n
+    b(26) = 1: b(28) = 24                ' 1 tekislik, 24 bit
+    PutLong b, 34, dataLen
+    PutLong b, 38, 2835: PutLong b, 42, 2835
+
+    cx = IIf(pos = 0 Or pos = 2, n, 0)
+    cy = IIf(pos < 2, n, 0)
+    For y = 0 To n - 1
+        For x = 0 To n - 1
+            cnt = 0
+            For sy = 0 To 3
+                For sx = 0 To 3
+                    dx = x + (sx + 0.5) / 4 - cx
+                    dy = y + (sy + 0.5) / 4 - cy
+                    If dx * dx + dy * dy <= n * n Then cnt = cnt + 1
+                Next sx
+            Next sy
+            a = cnt / 16
+            i = 54 + (n - 1 - y) * rowLen + x * 3
+            b(i) = Mix((inner \ 65536) And 255, (outer \ 65536) And 255, a)
+            b(i + 1) = Mix((inner \ 256) And 255, (outer \ 256) And 255, a)
+            b(i + 2) = Mix(inner And 255, outer And 255, a)
+        Next x
+    Next y
+
+    fh = FreeFile
+    Open f For Binary Access Write As #fh
+    Put #fh, , b
+    Close #fh
+End Function
+
+Private Sub PutLong(b() As Byte, ByVal offset As Long, ByVal v As Long)
+    b(offset) = v And 255
+    b(offset + 1) = (v \ 256) And 255
+    b(offset + 2) = (v \ 65536) And 255
+    b(offset + 3) = (v \ 16777216) And 255
+End Sub
+
+Private Function Mix(ByVal c1 As Long, ByVal c0 As Long, ByVal a As Double) As Byte
+    Mix = CByte(c0 + (c1 - c0) * a)
+End Function
+
 Private Sub SelectItem(ByVal cbo As MSForms.ComboBox, ByVal txt As String, ByVal defIndex As Long)
     Dim i As Long
     For i = 0 To cbo.ListCount - 1
@@ -140,16 +338,23 @@ Private Sub SelectItem(ByVal cbo As MSForms.ComboBox, ByVal txt As String, ByVal
     cbo.ListIndex = defIndex
 End Sub
 
+Private Sub ShowMsg(ByVal txt As String, ByVal color As Long, Optional ByVal tip As String = "")
+    lblMsg.Caption = Uz(txt)
+    lblMsg.ForeColor = color
+    lblMsg.ControlTipText = tip
+End Sub
+
 '------------------------------------------------------------------------------
 '  Sozlamalarni eslab qolish
 '------------------------------------------------------------------------------
 Private Sub LoadSettings()
     Dim folder As String
     SelectItem cboColor, GetSetting(APP_NAME, "Last", "Color", "CMYK"), 0
-    SelectItem cboBright, GetSetting(APP_NAME, "Last", "Bright", "15%"), 3
     SelectItem cboType, GetSetting(APP_NAME, "Last", "Type", "Banner"), 0
     SelectItem cboFormat, GetSetting(APP_NAME, "Last", "Format", "TIF"), 0
-    cboDpi.Text = GetSetting(APP_NAME, "Last", "Dpi", "150")
+    brightVal = CLng(Val(GetSetting(APP_NAME, "Last", "Bright", "15")))
+    If brightVal < 0 Or brightVal > 50 Then brightVal = 15
+    txtDpi.Text = GetSetting(APP_NAME, "Last", "Dpi", "150")
 
     folder = ActiveDocument.FilePath
     If Len(folder) = 0 Then folder = GetSetting(APP_NAME, "Last", "Folder", "")
@@ -159,22 +364,18 @@ End Sub
 
 Private Sub SaveSettings()
     SaveSetting APP_NAME, "Last", "Color", cboColor.Text
-    SaveSetting APP_NAME, "Last", "Bright", cboBright.Text
+    SaveSetting APP_NAME, "Last", "Bright", CStr(brightVal)
     SaveSetting APP_NAME, "Last", "Type", cboType.Text
     SaveSetting APP_NAME, "Last", "Format", cboFormat.Text
-    SaveSetting APP_NAME, "Last", "Dpi", cboDpi.Text
+    SaveSetting APP_NAME, "Last", "Dpi", txtDpi.Text
     SaveSetting APP_NAME, "Last", "Folder", txtFolder.Text
 End Sub
 
 '------------------------------------------------------------------------------
-'  Tanlovlar
+'  Holat
 '------------------------------------------------------------------------------
 Private Function IsCMYK() As Boolean
     IsCMYK = (cboColor.Text = "CMYK")
-End Function
-
-Private Function BrightPct() As Long
-    BrightPct = CLng(Val(cboBright.Text))   ' "Yo'q" -> 0, "15%" -> 15
 End Function
 
 Private Function NameFor(ByVal sr As ShapeRange) As String
@@ -187,28 +388,36 @@ Private Sub UpdateUI()
     Dim i As Long, txt As String, one As ShapeRange
     If loading Then Exit Sub
 
+    ' Ochroqlik
+    If brightVal = 0 Then
+        lblBrVal.Caption = Uz("Yo'q")
+        lblBrUnit.Visible = False
+    Else
+        lblBrVal.Caption = CStr(brightVal)
+        lblBrUnit.Visible = True
+    End If
+
     ' PNG faqat RGB bo'ladi
     If cboFormat.Text = "PNG" Then
         If cboColor.Text <> "RGB" Then cboColor.ListIndex = 1
         cboColor.Enabled = False
-        lblNote.Caption = "PNG formati CMYK ni qo'llamaydi - RGB bo'lib saqlanadi."
+        ShowMsg "PNG faqat RGB", CLR_WARN, Uz("PNG formati CMYK ni qo'llamaydi")
     Else
         cboColor.Enabled = True
-        lblNote.Caption = ""
+        ShowMsg "", CLR_MUTED
     End If
 
+    ' Nima saqlanadi
     If sel.Count = 0 Then
-        lblInfo.Caption = "Hech narsa tanlanmagan - butun sahifa saqlanadi:"
+        lblCount.Caption = "Sahifa"
+        lblCount.ControlTipText = Uz("Hech narsa tanlanmagan: butun sahifa saqlanadi")
         txt = NameFor(Nothing)
     Else
-        If sel.Count = 1 Then
-            lblInfo.Caption = "Tanlangan obyekt saqlanadi:"
-        Else
-            lblInfo.Caption = sel.Count & " ta obyekt - har biri alohida saqlanadi:"
-        End If
+        lblCount.Caption = sel.Count & " ta obyekt"
+        lblCount.ControlTipText = Uz("Har bir obyekt alohida faylga saqlanadi")
         For i = 1 To sel.Count
             If i > 3 Then
-                txt = txt & "... va yana " & (sel.Count - 3) & " ta"
+                txt = txt & "+" & (sel.Count - 3) & " ta"
                 Exit For
             End If
             Set one = CreateShapeRange
@@ -219,56 +428,85 @@ Private Sub UpdateUI()
     lblPreview.Caption = txt
 End Sub
 
+Private Sub StepBright(ByVal delta As Long)
+    brightVal = brightVal + delta * 5
+    If brightVal < 0 Then brightVal = 0
+    If brightVal > 50 Then brightVal = 50
+    UpdateUI
+End Sub
+
+Private Sub StepDpi(ByVal delta As Long)
+    Dim p As Variant, i As Long, cur As Long
+    p = Split(DPI_PRESETS, ",")
+    cur = CLng(Val(txtDpi.Text))
+    If delta > 0 Then
+        For i = 0 To UBound(p)
+            If CLng(p(i)) > cur Then txtDpi.Text = p(i): Exit Sub
+        Next i
+    Else
+        For i = UBound(p) To 0 Step -1
+            If CLng(p(i)) < cur Then txtDpi.Text = p(i): Exit Sub
+        Next i
+    End If
+End Sub
+
+'------------------------------------------------------------------------------
+'  Hodisalar
+'------------------------------------------------------------------------------
 Private Sub cboColor_Change(): UpdateUI: End Sub
 Private Sub cboType_Change(): UpdateUI: End Sub
 Private Sub cboFormat_Change(): UpdateUI: End Sub
 
-'------------------------------------------------------------------------------
-'  Tugmalar
-'------------------------------------------------------------------------------
-Private Sub btnFolder_Click()
+Private Sub lblBrMinus_Click(): StepBright -1: End Sub
+Private Sub lblBrPlus_Click(): StepBright 1: End Sub
+Private Sub lblDpiMinus_Click(): StepDpi -1: End Sub
+Private Sub lblDpiPlus_Click(): StepDpi 1: End Sub
+' Tez bosilganda ikkinchi bosish DblClick bo'lib keladi
+Private Sub lblBrMinus_DblClick(ByVal Cancel As MSForms.ReturnBoolean): StepBright -1: End Sub
+Private Sub lblBrPlus_DblClick(ByVal Cancel As MSForms.ReturnBoolean): StepBright 1: End Sub
+Private Sub lblDpiMinus_DblClick(ByVal Cancel As MSForms.ReturnBoolean): StepDpi -1: End Sub
+Private Sub lblDpiPlus_DblClick(ByVal Cancel As MSForms.ReturnBoolean): StepDpi 1: End Sub
+
+Private Sub lblFolderBox_Click(): PickFolder: End Sub
+Private Sub lblFolderTxt_Click(): PickFolder: End Sub
+Private Sub lblCloseBox_Click(): Unload Me: End Sub
+Private Sub lblCloseTxt_Click(): Unload Me: End Sub
+Private Sub lblExportBox_Click(): DoExport: End Sub
+Private Sub lblExportTxt_Click(): DoExport: End Sub
+
+Private Sub PickFolder()
     Dim folder As String
-    folder = CorelScriptTools.GetFolder(txtFolder.Text, "Eksport papkasini tanlang")
+    folder = CorelScriptTools.GetFolder(txtFolder.Text, "Papka")
     If Len(folder) > 0 Then txtFolder.Text = folder
 End Sub
 
-Private Sub btnCancel_Click()
-    Unload Me
-End Sub
+Private Sub DoExport()
+    Dim dpi As Long, result As String, n As Long, ln As Variant
+    If busy Then Exit Sub
 
-Private Sub btnExport_Click()
-    Dim dpi As Long, result As String, n As Long, line As Variant
-
-    If Not IsNumeric(cboDpi.Text) Then
-        MsgBox "Razreshenie (dpi) raqam bo'lishi kerak.", vbExclamation, "Pechat eksport"
+    dpi = CLng(Val(txtDpi.Text))
+    If Not IsNumeric(txtDpi.Text) Or dpi < 10 Or dpi > 2400 Then
+        ShowMsg "Razreshenie: 10" & ChrW(&H2013) & "2400 dpi", CLR_ERROR
         Exit Sub
     End If
-    dpi = CLng(Val(cboDpi.Text))
-    If dpi < 10 Or dpi > 2400 Then
-        MsgBox "Razreshenie 10 dan 2400 gacha bo'lishi kerak.", vbExclamation, "Pechat eksport"
-        Exit Sub
-    End If
-
     If Len(txtFolder.Text) = 0 Or Len(Dir$(txtFolder.Text, vbDirectory)) = 0 Then
-        MsgBox "Papka topilmadi: " & txtFolder.Text, vbExclamation, "Pechat eksport"
+        ShowMsg "Papka topilmadi", CLR_ERROR, txtFolder.Text
         Exit Sub
     End If
 
+    busy = True
     SaveSettings
-    btnExport.Enabled = False
-    lblNote.Caption = "Eksport qilinmoqda, kuting..."
+    ShowMsg "Eksport" & ChrW(&H2026), CLR_MUTED
     Me.Repaint
 
-    result = ExportPechat(IsCMYK(), BrightPct(), cboType.Text, cboFormat.Text, dpi, txtFolder.Text)
+    result = ExportPechat(IsCMYK(), brightVal, cboType.Text, cboFormat.Text, dpi, txtFolder.Text)
     If Len(result) > 0 Then
-        For Each line In Split(result, vbCrLf)
-            If Len(line) > 0 Then n = n + 1
-        Next line
-        MsgBox "Tayyor! " & n & " ta fayl saqlandi:" & vbCrLf & vbCrLf & result, _
-               vbInformation, "Pechat eksport"
-        Unload Me
+        For Each ln In Split(result, vbCrLf)
+            If Len(ln) > 0 Then n = n + 1
+        Next ln
+        ShowMsg "Saqlandi: " & n & " ta fayl", CLR_OK, result
     Else
-        btnExport.Enabled = True
-        UpdateUI
+        ShowMsg "Eksport bajarilmadi", CLR_ERROR
     End If
+    busy = False
 End Sub

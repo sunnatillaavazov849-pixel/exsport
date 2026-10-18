@@ -1,13 +1,19 @@
 # Pechat Eksport — CorelDRAW uchun plagin (makros)
 
 Rasmni pechatga (banner, orakal, bekprint) bitta oynadan eksport qiladi.
-Hamma tanlovlar ochiladigan ro'yxatda:
+Oyna uch blokdan iborat:
 
-1. **Rang rejimi** — CMYK yoki RGB
-2. **Ranglarni ochroq qilish** — Yo'q yoki 5–50% (RGB rasm CMYK ga o'tganda rangi to'qlashib ketmasligi uchun, odatda 10–20%)
-3. **Pechat turi** — Banner / Orakal / Bekprint
-4. **Format** — TIF, PNG, JPG, JPEG
-5. **Razreshenie (dpi)** — masalan 150 (o'zingiz ham yozsangiz bo'ladi)
+| Blok | Maydon | Qiymat |
+|---|---|---|
+| **Rang** | Rejim | CMYK / RGB |
+| | Ochroqlik | `−` / `+` bilan: Yo'q, 5…50 % (CMYK da rang to'qlashmasligi uchun, odatda 10–20 %) |
+| **Pechat** | Turi | Banner / Orakal / Bekprint |
+| | Format | TIF / PNG / JPG / JPEG |
+| | Razreshenie | `−` / `+` bilan: 72, 100, 120, 150, 200, 300 dpi (o'zingiz ham yozsangiz bo'ladi) |
+| **Fayl** | Papka | saqlash papkasi, fayl nomlari pastida ko'rinadi |
+
+Dizayn: och kulrang fon, oq yumaloq bloklar, Segoe UI shrifti.
+Qo'shimcha izohlar sichqonchani olib borganda chiqadi.
 
 **Nima eksport qilinadi:**
 
@@ -51,6 +57,7 @@ Yoki: **Tools → Macros → Run Macro** → `PechatgaEksport`.
 2. `PechatgaEksport` tugmasini bosing.
 3. Rang, ochroqlik, tur, format va dpi ni tanlang → **Eksport**.
 4. Fayl tanlangan papkaga `150 x 200 cm_banner_cmyk.tif` kabi nom bilan saqlanadi.
+   Natija oynaning pastida chiqadi (masalan, «Saqlandi: 3 ta fayl»), oyna yopilmaydi — **Yopish** bilan yopasiz.
 
 ## Eslatmalar
 

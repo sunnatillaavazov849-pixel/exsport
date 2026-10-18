@@ -21,7 +21,7 @@ Public Const APP_NAME As String = "CorelPechatExport"
 ' Asosiy makros - shu makrosni panelga tugma qilib qo'ying
 Public Sub PechatgaEksport()
     If Documents.Count = 0 Then
-        MsgBox "Avval CorelDRAW hujjatini oching.", vbExclamation, "Pechat eksport"
+        MsgBox "Avval hujjat oching.", vbExclamation, "Pechatga eksport"
         Exit Sub
     End If
     frmExport.Show
@@ -167,7 +167,7 @@ Cleanup:
     Exit Function
 
 Fail:
-    MsgBox "Eksportda xatolik: " & Err.Description, vbCritical, "Pechat eksport"
+    MsgBox "Eksport xatosi: " & Err.Description, vbCritical, "Pechatga eksport"
     ExportOne = ""
     Resume Cleanup
 End Function
